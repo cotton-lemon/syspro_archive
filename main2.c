@@ -47,7 +47,7 @@ int main() {
 
     // ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
     int source = open("s3.txt", O_RDONLY, 0);
-    int dest = open("b.out", O_WRONLY | O_CREAT /*| O_TRUNC/**/, 0644);
+    int dest = open("b.out", O_WRONLY | O_CREAT /*| O_TRUNC/**/, 0666);
     sendfile(dest,source);
     return 0;
 }
