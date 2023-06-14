@@ -19,32 +19,56 @@
 // }
 
 int main(void) {
-    char name[64]=".";
+    char dirname[512]="./data";
     DIR *dr;
     struct dirent *en;
-    dr = opendir(name); //open all directory
-    // dr = opendir("./data"); //open all directory
+    dr = opendir(dirname); //open all directory
+    strcpy(dirname+strlen(dirname),"/");
+    char * dirnameptr=dirname+strlen(dirname);
     
-    int dest = open("b.out", O_WRONLY | O_CREAT /*| O_TRUNC/**/, 0666);
+    int dest = open("out.txt", O_WRONLY | O_CREAT /*| O_TRUNC/**/, 0666);
+    int src;
+    long offset=0;
     // sendfile(dest,source);
+    // char * cptr=name;
+    // cptr+=sizeof(char)*strlen(name);
+
+    //todo 앞에 폴더명 붙여야함
+    struct stat file_status;
     if (dr) {
         while ((en = readdir(dr)) != NULL) {
         //  cout<<" \n"<<en->d_name; //print all directory name
-            struct stat file_status;
-            if ((stat(en->d_name, &file_status) < 0)||(S_ISREG(file_status.st_mode)==0)) {//check if it is valid file
+            memcpy(dirnameptr,en->d_name,strlen(en->d_name)+1);
+            // printf("dirname %s\n",dirname);
+            int tmp=(stat(dirname, &file_status));
+            if ((tmp < 0)||(S_ISREG(file_status.st_mode)==0)) {//check if it is valid file
+                // printf("what %s  error %d eeeeeee %d\n",en->d_name,S_ISREG(file_status.st_mode),errno);
                 continue;
             }
             // if ((stat(en->d_name, &file_status) < 0)) {
             //     printf("\n\nerror erronum %d\n\n",errno);
             //     continue;
             // }
-            printf("\n %s  size : %d byte",en->d_name,file_status.st_size);
+            src = open(dirname, O_RDONLY, 0);
+            sendfile(dest,src,NULL,file_status.st_size);
+            offset+=file_status.st_size;
+            printf("%s  size : %d byte\n",en->d_name,file_status.st_size);
+            close(src);
             
         }
         closedir(dr); //close all directory
     }
+    close(dest);
     long a=1;
-    printf("%d",sizeof(a));
+    printf("\n%d\n",sizeof(a));
+    dest=open("newa.txt", O_WRONLY | O_CREAT ,0666);
+    src = open("out.txt", O_RDONLY, 0);
+
+    // sendfile(dest,src,NULL,97962);
+    // close(dest);
+    // dest=open("newb.txt", O_WRONLY | O_CREAT ,0666);
+    // sendfile(dest,src,NULL,20);
+    
     return(0);
 }
 
