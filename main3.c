@@ -26,29 +26,33 @@ int main() {
     // higher values reduce number of system calls
     // size_t BUFFER_SIZE = 4096;
 
-    char buf[BUFSIZ];
-    size_t size;
+    // char buf[BUFSIZ];
+    // size_t size;
 
     // int source = open("data/rainbow-river.jpg", O_RDONLY, 0);
     int source = open("big", O_RDONLY, 0);
-    int dest = open("m2.jpg", O_WRONLY | O_CREAT /*| O_TRUNC/**/, 0644);
+    int dest = open("a.jpg", O_WRONLY | O_CREAT /*| O_TRUNC/**/, 0644);
 
-    while ((size = read(source, buf, BUFSIZ)) > 0) {
-        write(dest, buf, size);
-    }
+    // while ((size = read(source, buf, BUFSIZ)) > 0) {
+    //     write(dest, buf, size);
+    // }
 
     // close(source);
     // source=  open("s2.txt", O_RDONLY, 0);
     // while ((size = read(source, buf, BUFSIZ)) > 0) {
     //     write(dest, buf, size);
     // }
-    close(source);
-    close(dest);
+    // close(source);
+    // close(dest);
 
 
-    // ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
+    // // ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
     // int source = open("s3.txt", O_RDONLY, 0);
     // int dest = open("b.out", O_WRONLY | O_CREAT /*| O_TRUNC/**/, 0666);
-    // sendfile(dest,source);
+    sendfile(dest,source,((void *)0),97962);
+    // source = open("data/rainbow-river.jpg", O_RDONLY, 0);
+    // sendfile(dest,source,((void *)0),97962);
+    close(source);
+    close(dest);
     return 0;
 }
