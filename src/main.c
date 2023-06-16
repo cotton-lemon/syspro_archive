@@ -16,11 +16,15 @@ void pack();
 void unpack();
 void add();
 void del();
+void list();
 // void test(ch)
 int main(int argc,char* argv[]){
     // printf("argc %d\n",argc);
     if (argc!=4){
-        // printf("argc %d\n",argc);
+        if (strcmp(argv[1],"list")==0){
+        list(argv);
+        return 0;
+        }
         wrong();
     }
     if (strcmp(argv[1],"pack")==0){
@@ -60,12 +64,13 @@ void pack(char* argv[]){
     strcpy(dirname+strlen(dirname),"/");
     char * dirnameptr=dirname+strlen(dirname);
     const char* tmpfilename=".filemeta.tmp.tmp";
-    int dest = open(argv[2], O_WRONLY | O_CREAT /*| O_TRUNC/**/, 0666);
+    int dest = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, 0666);
     int metadest=open( tmpfilename,O_WRONLY | O_CREAT,0666);
     unsigned long metasize=0xf1234567;
     int src;
     unsigned long offset=12;
     struct stat file_status;
+    int numoffile=0;
     if (dr) {
         int i=0xf1234567;
         write(dest,&i,sizeof(int));
@@ -88,6 +93,7 @@ void pack(char* argv[]){
             write(metadest,&filesize,sizeof(long));
             write(metadest,&(en->d_name),strlen(en->d_name));
             metasize+=(size+9);
+            numoffile+=1;
             close(src);
         }
         closedir(dr); //close all directory
@@ -98,6 +104,10 @@ void pack(char* argv[]){
     }
     if (metasize==0){
         printf("empty folder\n");
+        close(dest);
+        close(metadest);
+        remove(argv[2]);
+        remove(tmpfilename);
         exit(1);
     }
     close(metadest);
@@ -106,13 +116,15 @@ void pack(char* argv[]){
     lseek(dest,sizeof(int),0);
     // offset=0x345678ff;
     write(dest,&offset,sizeof(long));
-    printf("offset: %d\n",offset);
+    // printf("offset: %d\n",offset);
 
     close(dest);
     close(metadest);
     remove(tmpfilename);
     // stat(dirname, &file_status);
-    printf("meta size: %d\n",metasize);
+    // printf("meta size: %d\n",metasize);
+    printf("%d file(s) archived\narchive size: %d\n",numoffile,offset+metasize);
+
 
 }
 
@@ -131,17 +143,18 @@ void unpack(char* argv[]){
     char buf[20];
     // memset(buf,0,20);
 
-    int howread=read(meta,buf,20);
-    printf("how read %d\n",howread);
-        for(int i=0;i<10;++i){
-        printf("%x\n",buf[i]);
+    int howread=read(meta,buf,6);
+    if (howread<5){
+        printf("sth wrong in the file\n");
+        exit(1);
     }
     int tag = *(int*)(buf);
     unsigned long offset=*(unsigned long*)(buf+4);
     if (tag!=0xf1234567){
         printf("not an arcx archive file\n");
+        exit(1);
     }
-    printf("tag %d, offset %d \n",tag,offset);
+    // printf("tag %d, offset %d \n",tag,offset);
 
 
     //start unarchive
@@ -149,9 +162,9 @@ void unpack(char* argv[]){
     lseek(meta,offset,0);
     lseek(archive,12,0);
     int count=0;
-    printf("unarchivew start");
+    // printf("unarchivew start");
     while(start<offset){
-        printf("in while\n");
+        // printf("in while\n");
         char dirname2[1024];
         memset(dirname2,0,1024);
         strcpy(dirname2,argv[3]);
@@ -165,7 +178,7 @@ void unpack(char* argv[]){
         read(meta,buf1,9);
         char namelength = buf1[0];
         unsigned long filesize=*(unsigned long*)(buf1+1);
-        printf("namelength %d qqq   %d\b",namelength,filesize);
+        // printf("namelength %d qqq   %d\b",namelength,filesize);
         read(meta,buf2,namelength);
         memcpy(dirnameptr2,buf2,strlen(buf2));
         int newfile=open(dirname2,O_WRONLY | O_CREAT,0666);
@@ -174,27 +187,121 @@ void unpack(char* argv[]){
             printf("file openfail\n");
         }
         sendfile(newfile,archive,NULL,filesize);
-        printf("file name: [[%s]] fileend\n",dirname2);
+        // printf("file name: [[%s]] fileend\n",dirname2);
         start+=filesize;
-        ++count;
-        printf("%d start\n",start);
-        printf("%s",dirname2);
-        if(count>10){
-            exit(1);
-        }
         close(newfile);
     }
-    // int q= open("small1/1.txt",O_WRONLY | O_CREAT,0666);
-    // char * dd[32]={'1','2','3','4'};
-    // write(q,dd,32);
-    // close(q);
 
 }
 
 void add(char* argv[]){
+    int meta=open(argv[2], O_RDONLY, 0);
+    struct stat file_status;
+    int tmp=(stat(argv[3], &file_status));
+            if ((tmp < 0)||(S_ISREG(file_status.st_mode)==0)) {//check if it is valid file
+                printf("not a vaild file\n");
+                exit(1);
+            }
+    int newfile=open(argv[3], O_RDONLY, 066);
+    if(meta==-1){
+        printf("archive file open fail\n");
+        exit(1);
+    }
+    if (newfile==-1){
+        printf("new file open fail\n");
+        exit(1);
+    }
+    
+    char buf[8];
+    // memset(buf,0,20);
+
+    int howread=read(meta,buf,6);
+    if (howread<5){
+        printf("sth wrong in the file\n");
+        exit(1);
+    }
+    int tag = *(int*)(buf);
+    unsigned long offset=*(unsigned long*)(buf+4);
+    if (tag!=0xf1234567){
+        printf("not an arcx archive file\n");
+        exit(1);
+    }
+
+    unsigned long start=12;
+    lseek(meta,offset,0);
+    const char* tmpfilename=".filemeta.tmp.tmp";
+    int metatmp=open( tmpfilename,O_WRONLY | O_CREAT,0666);
+    sendfile(metatmp,meta,NULL,(1<<17)-1);//meta 임시
+    close(meta);
+    meta=open(argv[2], O_WRONLY|O_APPEND, 0);
+    //offset뒤에 파일추가
+    // lseek(meta,offset,0);
+    sendfile(meta,newfile,NULL,file_status.st_size);
+    
+    unsigned long filesize=file_status.st_size;
+    char size=strlen(argv[3]);
+    write(metatmp,&size,1);
+    write(metatmp,&filesize,sizeof(long));
+    write(metatmp,&(argv[3]),size);
+    unsigned long newoffset=offset+filesize;
+    int metasize=lseek(metatmp,0,2);
+    metatmp=open(tmpfilename, O_RDONLY,0666);
+    sendfile(meta,metatmp,NULL,metasize);
+    close(metatmp);
+    lseek(meta,sizeof(int),0);
+    write(meta,&newoffset,sizeof(long));
+    close(newfile);
+    close(meta);
+    
+    printf("metasize %d\n",metasize);
+    // lseek(meta,sizeof(int),0);
+    // write(dest,&offset,sizeof(long));
+    // // printf("offset: %d\n",offset);
+
+
+    
+    
+
+
+
+
+
 
 }
 
 void del(char* argv[]){
+
+}
+void list(char* argv[]){
+    int meta=open(argv[2], O_RDONLY, 0);
+    char buf[8];
+    int howread=read(meta,buf,6);
+    if (howread<5){
+        printf("sth wrong in the file\n");
+        exit(1);
+    }
+    int tag = *(int*)(buf);
+    unsigned long offset=*(unsigned long*)(buf+4);
+    if (tag!=0xf1234567){
+        printf("not an arcx archive file\n");
+        exit(1);
+    }
+
+
+    unsigned long start=12;
+    lseek(meta,offset,0);
+    int count=0;
+    // printf("unarchivew start");
+    while(start<offset){
+        char buf1[20];
+        char buf2[512];
+        memset(buf2,0,512);
+        read(meta,buf1,9);
+        char namelength = buf1[0];
+        unsigned long filesize=*(unsigned long*)(buf1+1);
+        read(meta,buf2,namelength);
+        printf("%s size: %d\n",buf2,filesize);
+        start+=filesize;
+    }
 
 }
