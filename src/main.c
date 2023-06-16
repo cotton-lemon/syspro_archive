@@ -310,10 +310,137 @@ void add(char* argv[]){
 }
 
 void del(char* argv[]){
+    int meta=open(argv[2], O_RDONLY, 0);
+    char buf[8];
+    int howread=read(meta,buf,14);
+    if (howread<8){
+        printf("sth wrong in the file\n");
+        exit(1);
+    }
+    int tag = *(int*)(buf);
+    unsigned int offset=*(unsigned int*)(buf+4);
+    if (tag!=0xf1234567){
+        printf("not an arcx archive file\n");
+        exit(1);
+    }
+
+    unsigned int start=8;
+    char namelength;
+    lseek(meta,offset,0);
+    char buf1[20];
+    char buf2[512];
+    char flag=0;
+    unsigned int filesize;
+    unsigned int metaoffset=0;
+    while(start<offset){
+        memset(buf2,0,512);
+        read(meta,buf1,5);
+        namelength = buf1[0];
+        filesize=*(unsigned int*)(buf1+1);
+        read(meta,buf2,namelength);
+        // printf("%s size: %d\n",buf2,filesize);
+        if(strcmp(buf2,argv[3])==0){
+            flag=1;
+            break;
+        }
+        start+=filesize;
+        metaoffset+=5+namelength;
+    }
+    unsigned int end=lseek(meta,0,2);
+    close(meta);
+    if (flag==0){
+        printf("That file is not in this archive\n");
+        exit(1);
+    }
+    // printf("find\n");
+    meta=open(argv[2], O_RDONLY, 0);
+    const char* tmpfilename=".filemeta.tmp.tmp";
+    int newfile=open(tmpfilename,O_WRONLY|O_CREAT|O_TRUNC,0666);
+    if (newfile==-1){
+        printf("unable to make tmpfile\ntry again\n");
+    }
+    sendfile(newfile,meta,0,start);
+    lseek(meta,filesize,1);
+    sendfile(newfile,meta,NULL,offset-start-filesize+metaoffset);
+    lseek(meta,namelength+5,1);
+    sendfile(newfile,meta,NULL,end-offset-metaoffset-namelength-5);
+    close(meta);
+    lseek(newfile,sizeof(int),0);
+    unsigned int newoffset=offset-filesize;
+    write(newfile,&newoffset,sizeof(int));
+    close(newfile);
+    // chmod(argv[2],0655);
+    int k=remove(argv[2]);
+    printf("removed? %d\n",k);
+    printf("error %d",errno);
+
+    k=rename(tmpfilename,argv[2]);
+    printf("renamed? %d\n",k);
+    printf("error %d",errno);
+    printf("renamed? %s\n",argv[2]);
+
+
+
+    // printf("offset %d\n",offset);
+    // start=8;
+    // int p=lseek(meta,0,SEEK_SET);
+    // printf("offset?? %d\n",p);
+    // // printf("size t%d\n",sizeof(off_t));
+    // // printf("size t%d\n",sizeof(signed int));
+    // // printf("size t%d\n",offset);why int offset not working?
+    // // unsigned int qwe=offset;
+    // unsigned int end=lseek(meta,0,SEEK_END);
+    // p=lseek(meta,offset,SEEK_SET);
+    // // printf("offset?? %d\n",p);
+    // // printf("err %d\n",errno);
+    
+    // const char* tmpfilename=".filemeta.tmp.tmp";
+    // int metatmp=open( tmpfilename,O_WRONLY | O_CREAT | O_TRUNC,0666);
+    // sendfile(metatmp,meta,NULL,end-p);//meta 임시
+    // close(meta);
+    // meta=open(argv[2], O_WRONLY);
+    // //offset뒤에 파일추가
+    // // lseek(meta,offset,0);
+    // lseek(meta,offset,SEEK_SET);
+    // // printf("qqqqoffset?? %d\n",p);
+    // // printf("err %d\n",errno);
+    // unsigned int filesize=file_status.st_size;
+    // sendfile(meta,newfile,NULL,filesize);
+    // printf("newfile size %d\n",filesize);
+    
+    
+    // char size=strlen(argv[3]);
+    // write(metatmp,&size,1);
+    // write(metatmp,&filesize,sizeof(int));
+    // write(metatmp,argv[3],size);
+    // printf("%s newfliename\n",argv[3]);
+    // unsigned int newoffset=offset+filesize;
+    // // int metasize=lseek(metatmp,0,2);
+    // metatmp=open(tmpfilename, O_RDONLY);
+    // sendfile(meta,metatmp,NULL,end-p+5+size);
+    // close(metatmp);
+    // lseek(meta,sizeof(int),0);
+    // write(meta,&newoffset,sizeof(int));
+    // close(newfile);
+    // close(meta);
+    
+    // // printf("metasize %d\n",metasize);
+
+
+    // remove(tmpfilename);
+    
+    
+
+
+
+
 
 }
 void list(char* argv[]){
     int meta=open(argv[2], O_RDONLY, 0);
+    if (meta==-1){
+        printf("l file open fail\n");
+    }
     char buf[15];
     int howread=read(meta,buf,14);
     if (howread<5){
