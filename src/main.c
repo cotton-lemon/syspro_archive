@@ -223,7 +223,7 @@ void add(char* argv[]){
         char namelength = buf1[0];
         unsigned int filesize=*(unsigned int*)(buf1+1);
         read(meta,buf2,namelength);
-        printf("%s size: %d\n",buf2,filesize);
+        // printf("%s size: %d\n",buf2,filesize);
         start+=filesize;
         if(strcmp(buf2,argv[3])==0){
             printf("already in archive file\n");
@@ -259,32 +259,36 @@ void add(char* argv[]){
     // printf("size t%d\n",sizeof(off_t));
     // printf("size t%d\n",sizeof(signed int));
     // printf("size t%d\n",offset);why int offset not working?
-    unsigned int qwe=offset;
-    p=lseek(meta,qwe,SEEK_SET);
-    printf("offset?? %d\n",p);
-    printf("err %d\n",errno);
+    // unsigned int qwe=offset;
+    unsigned int end=lseek(meta,0,SEEK_END);
+    p=lseek(meta,offset,SEEK_SET);
+    // printf("offset?? %d\n",p);
+    // printf("err %d\n",errno);
+    
     const char* tmpfilename=".filemeta.tmp.tmp";
     int metatmp=open( tmpfilename,O_WRONLY | O_CREAT | O_TRUNC,0666);
-    sendfile(metatmp,meta,NULL,(2<<16)-1);//meta 임시
+    sendfile(metatmp,meta,NULL,end-p);//meta 임시
     close(meta);
     meta=open(argv[2], O_WRONLY);
     //offset뒤에 파일추가
     // lseek(meta,offset,0);
-    p=lseek(meta,qwe,SEEK_SET);
+    lseek(meta,offset,SEEK_SET);
     // printf("qqqqoffset?? %d\n",p);
-    printf("err %d\n",errno);
-    sendfile(meta,newfile,NULL,file_status.st_size);
-    printf("newfile size %d\n",file_status.st_size);
-    
+    // printf("err %d\n",errno);
     unsigned int filesize=file_status.st_size;
+    sendfile(meta,newfile,NULL,filesize);
+    printf("newfile size %d\n",filesize);
+    
+    
     char size=strlen(argv[3]);
     write(metatmp,&size,1);
     write(metatmp,&filesize,sizeof(int));
-    write(metatmp,&(argv[3]),size);
+    write(metatmp,argv[3],size);
+    printf("%s newfliename\n",argv[3]);
     unsigned int newoffset=offset+filesize;
-    int metasize=lseek(metatmp,0,2);
-    metatmp=open(tmpfilename, O_RDONLY,0666);
-    sendfile(meta,metatmp,NULL,metasize);
+    // int metasize=lseek(metatmp,0,2);
+    metatmp=open(tmpfilename, O_RDONLY);
+    sendfile(meta,metatmp,NULL,end-p+5+size);
     close(metatmp);
     lseek(meta,sizeof(int),0);
     write(meta,&newoffset,sizeof(int));
@@ -294,7 +298,7 @@ void add(char* argv[]){
     // printf("metasize %d\n",metasize);
 
 
-    // remove(tmpfilename);
+    remove(tmpfilename);
     
     
 
@@ -326,7 +330,7 @@ void list(char* argv[]){
 
     unsigned int start=8;
     unsigned int q=offset;
-    printf("tag %d, offset %d\n",tag,offset);
+    // printf("tag %d, offset %d\n",tag,offset);
     lseek(meta,q,0);
     int count=1;
     while(start<offset){
@@ -338,9 +342,9 @@ void list(char* argv[]){
         unsigned int filesize=*(unsigned int*)(buf1+1);
         read(meta,buf2,namelength);
         printf("%s size: %d\n",buf2,filesize);
-        printf("%d %d\n",filesize,start);
-        printf("start %d offset %d\n",start,offset);
-        printf("%d\n",start<offset);
+        // printf("%d %d\n",filesize,start);
+        // printf("start %d offset %d\n",start,offset);
+        // printf("%d\n",start<offset);
         start+=filesize;
         if(++count>9){
             exit(1);
