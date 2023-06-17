@@ -1,5 +1,11 @@
 {
     "files.associations": {
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "dirent.h": "c",
+        "string.h": "c",
+        "sendfile.h": "c",
+        "stdlib.h": "c",
+        "stat.h": "c",
+        "errno.h": "c"
     }
 }

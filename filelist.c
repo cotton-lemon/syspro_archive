@@ -17,7 +17,7 @@
 
 //     return file_status.st_size;
 // }
-
+void readfile();
 int main(void) {
     char dirname[512]="./data";
     DIR *dr;
